@@ -3,25 +3,24 @@ package com.woodiertexas.planetarium;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
-import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 
-import net.minecraft.resource.JsonDataLoader;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.profiler.Profiler;
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.util.profiling.ProfilerFiller;
 
-public class PlanetManager extends JsonDataLoader implements IdentifiableResourceReloadListener {
-	private static final Gson GSON = new GsonBuilder().create();
-	private Map<Identifier, PlanetInfo> planets;
+public class PlanetManager extends SimpleJsonResourceReloadListener<JsonElement> {
+	private static final FileToIdConverter CONVERTER = FileToIdConverter.json(Planetarium.MOD_ID + "/planets");
+	private Map<Identifier, PlanetInfo> planets = Map.of();
 
 	public PlanetManager() {
-		super(GSON, Planetarium.MOD_ID + "/planets");
+		super(ExtraCodecs.JSON, CONVERTER);
 	}
 
 	public Map<Identifier, PlanetInfo> getPlanets() {
@@ -29,7 +28,7 @@ public class PlanetManager extends JsonDataLoader implements IdentifiableResourc
 	}
 
 	@Override
-	protected void apply(Map<Identifier, JsonElement> cache, ResourceManager manager, Profiler profiler) {
+	protected void apply(Map<Identifier, JsonElement> cache, ResourceManager manager, ProfilerFiller profiler) {
 		Map<Identifier, PlanetInfo> planets = new HashMap<>();
 
 		profiler.push("Load Planets");
@@ -56,10 +55,5 @@ public class PlanetManager extends JsonDataLoader implements IdentifiableResourc
 		profiler.pop();
 
 		this.planets = Map.copyOf(planets);
-	}
-
-	@Override
-	public Identifier getFabricId() {
-		return Identifier.of(Planetarium.MOD_ID, "planet_reloader");
 	}
 }

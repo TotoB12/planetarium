@@ -3,7 +3,7 @@ package com.woodiertexas.planetarium;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Optional;
 
@@ -28,11 +28,10 @@ public record PlanetInfo(float procession, float tilt, float inclination, float 
 	);
 
 	public Identifier getTexture(Identifier id) {
-		// Identifier.of(id.getNamespace, "textures/planets/" + id.getPath() + ".png");
 		if (texture_override.isEmpty()) {
-			return id.withPrefix("textures/planetarium/planets/").extendPath(".png");
+			return id.withPrefix("textures/planetarium/planets/").withSuffix(".png");
 		}
 		
-		return texture_override.get().withPrefix("textures/").extendPath(".png");
+		return texture_override.get().withPrefix("textures/").withSuffix(".png");
 	}
 }
