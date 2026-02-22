@@ -3,38 +3,37 @@ package com.woodiertexas.planetarium;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
-import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.profiling.ProfilerFiller;
 
-public class PlanetManager extends SimpleJsonResourceReloadListener implements IdentifiableResourceReloadListener {
-	private static final Gson GSON = new GsonBuilder().create();
-	private Map<ResourceLocation, PlanetInfo> planets = Map.of();
+public class PlanetManager extends SimpleJsonResourceReloadListener<JsonElement> {
+	private static final FileToIdConverter CONVERTER = FileToIdConverter.json(Planetarium.MOD_ID + "/planets");
+	private Map<Identifier, PlanetInfo> planets = Map.of();
 
 	public PlanetManager() {
-		super(GSON, Planetarium.MOD_ID + "/planets");
+		super(ExtraCodecs.JSON, CONVERTER);
 	}
 
-	public Map<ResourceLocation, PlanetInfo> getPlanets() {
+	public Map<Identifier, PlanetInfo> getPlanets() {
 		return planets;
 	}
 
 	@Override
-	protected void apply(Map<ResourceLocation, JsonElement> cache, ResourceManager manager, ProfilerFiller profiler) {
-		Map<ResourceLocation, PlanetInfo> planets = new HashMap<>();
+	protected void apply(Map<Identifier, JsonElement> cache, ResourceManager manager, ProfilerFiller profiler) {
+		Map<Identifier, PlanetInfo> planets = new HashMap<>();
 
 		profiler.push("Load Planets");
-		for (Map.Entry<ResourceLocation, JsonElement> resourceEntry : cache.entrySet()) {
-			ResourceLocation id = resourceEntry.getKey();
+		for (Map.Entry<Identifier, JsonElement> resourceEntry : cache.entrySet()) {
+			Identifier id = resourceEntry.getKey();
 			DataResult<Pair<PlanetInfo, JsonElement>> result = PlanetInfo.CODEC.decode(JsonOps.INSTANCE, resourceEntry.getValue());
 
 			if (result.error().isPresent()) {
@@ -56,10 +55,5 @@ public class PlanetManager extends SimpleJsonResourceReloadListener implements I
 		profiler.pop();
 
 		this.planets = Map.copyOf(planets);
-	}
-
-	@Override
-	public ResourceLocation getFabricId() {
-		return ResourceLocation.fromNamespaceAndPath(Planetarium.MOD_ID, "planet_reloader");
 	}
 }

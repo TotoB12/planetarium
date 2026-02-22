@@ -11,7 +11,7 @@ import com.mojang.math.Axis;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 
@@ -38,7 +38,7 @@ public class Planetarium {
 	 * @param tickDelta    Time between ticks.
 	 * @param world        The client world to render in.
 	 */
-	public static void renderPlanet(PoseStack matrices, MultiBufferSource bufferSource, ResourceLocation texture, PlanetInfo planetInfo, float tickDelta, ClientLevel world) {
+	public static void renderPlanet(PoseStack matrices, MultiBufferSource bufferSource, Identifier texture, PlanetInfo planetInfo, float tickDelta, ClientLevel world) {
 		matrices.pushPose();
 		
 		// First, line planet up where the sun is in the sky
