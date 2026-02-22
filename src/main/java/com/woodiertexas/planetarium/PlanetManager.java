@@ -11,30 +11,30 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 
-import net.minecraft.resource.JsonDataLoader;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.profiler.Profiler;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.util.profiling.ProfilerFiller;
 
-public class PlanetManager extends JsonDataLoader implements IdentifiableResourceReloadListener {
+public class PlanetManager extends SimpleJsonResourceReloadListener implements IdentifiableResourceReloadListener {
 	private static final Gson GSON = new GsonBuilder().create();
-	private Map<Identifier, PlanetInfo> planets;
+	private Map<ResourceLocation, PlanetInfo> planets = Map.of();
 
 	public PlanetManager() {
 		super(GSON, Planetarium.MOD_ID + "/planets");
 	}
 
-	public Map<Identifier, PlanetInfo> getPlanets() {
+	public Map<ResourceLocation, PlanetInfo> getPlanets() {
 		return planets;
 	}
 
 	@Override
-	protected void apply(Map<Identifier, JsonElement> cache, ResourceManager manager, Profiler profiler) {
-		Map<Identifier, PlanetInfo> planets = new HashMap<>();
+	protected void apply(Map<ResourceLocation, JsonElement> cache, ResourceManager manager, ProfilerFiller profiler) {
+		Map<ResourceLocation, PlanetInfo> planets = new HashMap<>();
 
 		profiler.push("Load Planets");
-		for (Map.Entry<Identifier, JsonElement> resourceEntry : cache.entrySet()) {
-			Identifier id = resourceEntry.getKey();
+		for (Map.Entry<ResourceLocation, JsonElement> resourceEntry : cache.entrySet()) {
+			ResourceLocation id = resourceEntry.getKey();
 			DataResult<Pair<PlanetInfo, JsonElement>> result = PlanetInfo.CODEC.decode(JsonOps.INSTANCE, resourceEntry.getValue());
 
 			if (result.error().isPresent()) {
@@ -59,7 +59,7 @@ public class PlanetManager extends JsonDataLoader implements IdentifiableResourc
 	}
 
 	@Override
-	public Identifier getFabricId() {
-		return Identifier.of(Planetarium.MOD_ID, "planet_reloader");
+	public ResourceLocation getFabricId() {
+		return ResourceLocation.fromNamespaceAndPath(Planetarium.MOD_ID, "planet_reloader");
 	}
 }

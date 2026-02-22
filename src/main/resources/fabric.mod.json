@@ -18,13 +18,17 @@
 	"license": "MIT",
 	"icon": "assets/planetarium/icon.png",
 	"environment": "client",
-	"entrypoints": {},
+	"entrypoints": {
+		"client": [
+			"com.woodiertexas.planetarium.PlanetariumClient"
+		]
+	},
 	"mixins": [
 		"planetarium.mixins.json"
 	],
 	"depends": {
-		"fabricloader": ">=0.16.9",
-		"minecraft": ["1.21", "1.21.1"],
+		"fabricloader": ">=0.18.2",
+		"minecraft": "~1.21.11",
 		"java": ">=21",
 		"fabric-api": "*"
 	}

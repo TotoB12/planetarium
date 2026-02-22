@@ -2,10 +2,8 @@
 	"required": true,
 	"minVersion": "0.8",
 	"package": "com.woodiertexas.planetarium.mixin",
-	"compatibilityLevel": "JAVA_17",
-	"client": [
-		"WorldRendererMixin"
-	],
+	"compatibilityLevel": "JAVA_21",
+	"client": [],
 	"injectors": {
 		"defaultRequire": 1
 	}

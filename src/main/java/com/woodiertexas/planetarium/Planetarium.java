@@ -4,64 +4,75 @@ import org.joml.Matrix4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferRenderer;
-import com.mojang.blaze3d.vertex.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormats;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Axis;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
 
 public class Planetarium {
 	public static final Logger LOGGER = LoggerFactory.getLogger("Planetarium");
 	public static final String MOD_ID = "planetarium";
+	private static final int FULL_BRIGHT = 15728880;
 
 	/**
-	 * @param matrices   The matrix stack for rendering.
-	 * @param id         The id for the planet. (Ex: Mercury, Venus, Earth, and so on)
-	 * @param planetInfo The planet data.
-	 * @param tickDelta  Time between ticks.
-	 * @param world      The client world to render in.
+	 * Computes the sky angle from world time, replacing the removed {@code ClientLevel.getSkyAngle}.
 	 */
-	public static void renderPlanet(MatrixStack matrices, Identifier id, PlanetInfo planetInfo, float tickDelta, ClientWorld world) {
-		matrices.push();
+	public static float getSkyAngle(ClientLevel level) {
+		long dayTime = level.getDayTime();
+		double frac = Mth.frac(dayTime / 24000.0 - 0.25);
+		double mul = 0.5 - Math.cos(frac * Math.PI) / 2.0;
+		return (float)(frac * 2.0 + mul) / 3.0F;
+	}
+
+	/**
+	 * @param matrices     The pose stack for rendering.
+	 * @param bufferSource The buffer source for vertex data.
+	 * @param texture      The resolved texture location for the planet.
+	 * @param planetInfo   The planet data.
+	 * @param tickDelta    Time between ticks.
+	 * @param world        The client world to render in.
+	 */
+	public static void renderPlanet(PoseStack matrices, MultiBufferSource bufferSource, ResourceLocation texture, PlanetInfo planetInfo, float tickDelta, ClientLevel world) {
+		matrices.pushPose();
 		
 		// First, line planet up where the sun is in the sky
-		matrices.rotate(Axis.Y_POSITIVE.rotationDegrees(90.0F));
+		matrices.mulPose(Axis.YP.rotationDegrees(90.0F));
 		
 		// Second, change the orbital tilt of the planet
-		matrices.rotate(Axis.Y_POSITIVE.rotationDegrees(planetInfo.tilt())); // tilt
+		matrices.mulPose(Axis.YP.rotationDegrees(planetInfo.tilt()));
 		
 		// Third, set the angle of the planet in the sky and offset it.
-		matrices.rotate(Axis.X_POSITIVE.rotationDegrees(-world.getSkyAngle(tickDelta) * 360.0F + planetInfo.procession())); // procession
+		matrices.mulPose(Axis.XP.rotationDegrees(-getSkyAngle(world) * 360.0F + planetInfo.procession()));
 		
 		// Fourth, set the inclination of the planet.
-		matrices.rotate(Axis.Z_POSITIVE.rotationDegrees(planetInfo.inclination())); // inclination
+		matrices.mulPose(Axis.ZP.rotationDegrees(planetInfo.inclination()));
 		
 		// Finally, change the rotation of the planet texture.
-		matrices.rotate(Axis.Y_POSITIVE.rotationDegrees(planetInfo.texture_rotation()));
+		matrices.mulPose(Axis.YP.rotationDegrees(planetInfo.texture_rotation()));
 		
-		if (world.getTimeOfDay() % 24000L >= 11800) {
-			Matrix4f matrix4f = matrices.peek().getModel();
-			RenderSystem.setShaderTexture(0, planetInfo.getTexture(id));
-			BufferBuilder bufferBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
-			bufferBuilder.xyz(matrix4f, -planetInfo.size(), 99.0F, -planetInfo.size()).uv0(0.0F, 0.0F);
-			bufferBuilder.xyz(matrix4f, planetInfo.size(), 99.0F, -planetInfo.size()).uv0(1.0F, 0.0F); // u: 1.0
-			bufferBuilder.xyz(matrix4f, planetInfo.size(), 99.0F, planetInfo.size()).uv0(1.0F, 1.0F); // u: 1.0, v: 1.0
-			bufferBuilder.xyz(matrix4f, -planetInfo.size(), 99.0F, planetInfo.size()).uv0(0.0F, 1.0F); // v: 1.0
+		if (world.getDayTime() % 24000L >= 11800) {
+			float clearFactor = 1.0f - world.getRainLevel(tickDelta);
+			float transparency = 2 * world.getStarBrightness(tickDelta) * clearFactor;
 			
-			float rainGradient = 1.0f - world.getRainGradient(tickDelta);
-			float transparency = 2 * world.getStarBrightness(tickDelta) * rainGradient;
 			if (transparency > 0.0f) {
-				RenderSystem.setShaderColor(transparency, transparency, transparency, transparency);
+				Matrix4f matrix4f = matrices.last().pose();
+				int color = ARGB.colorFromFloat(transparency, transparency, transparency, transparency);
+				VertexConsumer buffer = bufferSource.getBuffer(RenderType.text(texture));
+				float size = planetInfo.size();
+				
+				buffer.addVertex(matrix4f, -size, 99.0F, -size).setColor(color).setUv(0.0F, 0.0F).setLight(FULL_BRIGHT);
+				buffer.addVertex(matrix4f, size, 99.0F, -size).setColor(color).setUv(1.0F, 0.0F).setLight(FULL_BRIGHT);
+				buffer.addVertex(matrix4f, size, 99.0F, size).setColor(color).setUv(1.0F, 1.0F).setLight(FULL_BRIGHT);
+				buffer.addVertex(matrix4f, -size, 99.0F, size).setColor(color).setUv(0.0F, 1.0F).setLight(FULL_BRIGHT);
 			}
-			
-			BufferRenderer.drawWithShader(bufferBuilder.endOrThrow());
 		}
-		matrices.pop();
+		
+		matrices.popPose();
 	}
 }
